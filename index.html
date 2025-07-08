@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qubic-Solana Bridge UI</title>
+    <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.95.3/lib/index.iife.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root" class="bg-gray-900 text-white min-h-screen"></div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const App = () => {
+            const [qubicIdentity, setQubicIdentity] = useState('BZBQFLLBNCXEMGLOBHUVFTLUPLVCPQUASSILFABOFFBCADQSSUPNWLZBQEXK');
+            const [balance, setBalance] = useState('0');
+            const [solanaAddress, setSolanaAddress] = useState('');
+            const [txHash, setTxHash] = useState('');
+            const [tick, setTick] = useState('');
+            const [status, setStatus] = useState('');
+            const [error, setError] = useState('');
+
+            // Fetch Qubic balance
+            const fetchBalance = async () => {
+                try {
+                    const response = await axios.post('http://localhost:3000/getbalance', {
+                        identity: qubicIdentity
+                    });
+                    setBalance(response.data.balance || '0');
+                } catch (err) {
+                    setError('Failed to fetch balance: ' + err.message);
+                }
+            };
+
+            // Initiate Qubic to Solana transfer
+            const initiateTransfer = async () => {
+                if (!solanaAddress || !window.solanaWeb3.PublicKey.isValidPubkey(solanaAddress)) {
+                    setError('Invalid Solana address');
+                    return;
+                }
+                try {
+                    const response = await axios.post('http://localhost:3000/sendcustomtransaction', {
+                        identity: qubicIdentity,
+                        solanaAddress,
+                        amount: 0,
+                        extraData: '317667325451645a5131' // 1vg2tQdZQ!
+                    });
+                    setTxHash(response.data.txHash);
+                    setTick(response.data.tick);
+                    setStatus('Transaction sent! Check status below.');
+                } catch (err) {
+                    setError('Transfer failed: ' + err.message);
+                }
+            };
+
+            // Check transaction status
+            const checkTxStatus = async () => {
+                if (!txHash || !tick) {
+                    setError('No transaction to check');
+                    return;
+                }
+                try {
+                    const response = await axios.post('http://localhost:3000/checktxontick', {
+                        tick,
+                        txHash
+                    });
+                    setStatus(response.data.status);
+                } catch (err) {
+                    setError('Status check failed: ' + err.message);
+                }
+            };
+
+            useEffect(() => {
+                fetchBalance();
+            }, []);
+
+            return (
+                <div className="container mx-auto p-4">
+                    <h1 className="text-3xl font-bold mb-4">Qubic-Solana Bridge</h1>
+                    <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
+                        <h2 className="text-xl mb-2">Qubic Wallet</h2>
+                        <p><strong>Identity:</strong> {qubicIdentity}</p>
+                        <p><strong>Balance:</strong> {balance} QUBIC</p>
+                        <button
+                            onClick={fetchBalance}
+                            className="mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                        >
+                            Refresh Balance
+                        </button>
+                    </div>
+                    <div className="bg-gray-800 p-4 rounded-lg shadow-lg mt-4">
+                        <h2 className="text-xl mb-2">Initiate Transfer to Solana</h2>
+                        <input
+                            type="text"
+                            placeholder="Solana Address (e.g., 858JC4zcMamqKyGF8WAx4ioUu6oqt58X3a33pya4EZDn)"
+                            value={solanaAddress}
+                            onChange={(e) => setSolanaAddress(e.target.value)}
+                            className="w-full p-2 mb-2 bg-gray-700 text-white rounded"
+                        />
+                        <button
+                            onClick={initiateTransfer}
+                            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                        >
+                            Send Transfer
+                        </button>
+                    </div>
+                    <div className="bg-gray-800 p-4 rounded-lg shadow-lg mt-4">
+                        <h2 className="text-xl mb-2">Transaction Status</h2>
+                        <p><strong>TxHash:</strong> {txHash}</p>
+                        <p><strong>Tick:</strong> {tick}</p>
+                        <p><strong>Status:</strong> {status}</p>
+                        <button
+                            onClick={checkTxStatus}
+                            className="mt-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+                        >
+                            Check Status
+                        </button>   
+                    </div>
+                    {error && (
+                        <div className="bg-red-600 p-4 rounded-lg mt-4">
+                            <p>{error}</p>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
