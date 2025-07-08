@@ -61,8 +61,6 @@ This ensures a **trustless, transparent, and cross-chain** aid distribution proc
    npm install
    npm start
 
-   ---
-
 ## 🌐 Use Cases
 
 - **Disaster Relief (e.g., Sindh Floods)**  
